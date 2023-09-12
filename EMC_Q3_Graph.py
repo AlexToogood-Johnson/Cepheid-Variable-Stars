@@ -1,4 +1,4 @@
-# iteration_formula.py
+# EMC_Q3_Graph.py
 """
 Creates a list of 150 iterative formula results for the radius, velocity, and pressure acting on the shell of a Cepheid variable star.
 """
