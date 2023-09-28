@@ -15,28 +15,29 @@ Users can adjust the following initial parameters via sliders:
 - **Initial Mass (kg)**: The mass of the star.
 - **Initial Surface Mass (kg)**: The mass of the star's surface.
 - **Initial Radius (m)**: The initial radius of the star.
-- **Initial Velocity (m/s)**: The initial velocity of the star's surface.
+- **Gamma (ᵞ)**: The initial velocity of the gamma constant.
 - **Initial Pressure (N/m²)**: The initial pressure at the star's surface.
 
 ## How to Use
 
 1. Run the simulation by executing the Python script.
 2. Adjust the sliders to change the initial parameters of the Cepheid star.
-3. Observe how changing the parameters affects the star's behavior on the graphs.
-4. Click the "Reset" button to revert all parameters to their default values.
+3. Click the "Update" button to refresh the graph after changing parameters.
+4. Observe how changing the parameters affects the star's behavior on the graphs.
+5. Click the "Reset" button to revert all parameters to their default values.
 
 ## Dependencies
 
 This project uses the following libraries and tools:
 
 - Python 3
-- PyQt5: Used for creating the GUI interface.
+- Tkinter: Used for creating the GUI interface.
 - NumPy: Used for numerical operations.
 - Matplotlib: Used for plotting graphs.
 
 ## Project Structure
 
-- `cepheid_simulation.py`: The main Python script that runs the Cepheid star simulation.
+- `app.py`: The main Python script that runs the Cepheid star simulation.
 - `README.md`: This documentation file.
 - `LICENSE`: The project's open-source license.
 - `requirements.txt`: A list of project dependencies.
