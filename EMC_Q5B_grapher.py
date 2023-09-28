@@ -1,47 +1,40 @@
-#EMC_Q5B_grapher.py
-"""Creates a graphical calculator that plots the radius, velocity and pressure of a Cepheid variable star
-based on how the initial starting values change"""
+#app.py
+"""A graphical calculator that plots the radius, velocity and pressure of a Cepheid variable star"""
 
-import sys
+########## Imports ##########
+
 import math
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QSlider,
-    QLabel,
-    QPushButton,
-    QHBoxLayout,
-)
-from PyQt5.QtCore import Qt
+import tkinter as tk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from itertools import cycle
+import numpy as np
 
-# Constants
-DEFAULT_INITIAL_MASS = 1e31
-DEFAULT_INITIAL_SURFACE_MASS = 1e26
-DEFAULT_INITIAL_RADIUS = 1.7e10
-DEFAULT_INITIAL_VELOCITY = 0
-DEFAULT_INITIAL_PRESSURE = 56000
+########## Constants ##########
+
+DEFAULT_MASS = 1e31
+DEFAULT_SURFACE_MASS = 1e26
+DEFAULT_RADIUS = 1.7e10
+DEFAULT_VELOCITY = 0
+DEFAULT_PRESSURE = 56000
+DEFAULT_GAMMA = 5/3
 TIME_INTERVAL = 1e4
 GRAVITY_CONSTANT = 6.67430e-11
 
-# Function to perform the simulation
-def simulate_properties(initial_mass, initial_surface_mass, initial_radius, initial_velocity, initial_pressure):
+########## Functions ##########
+
+def simulate_properties(initial_mass, initial_surface_mass, initial_radius, initial_pressure, gamma):
+    """Calculates the properties of the star based on how the initial starting values change"""
+
     data = {"velocity": [], "radius": [], "pressure": []}
     time = [TIME_INTERVAL * i for i in range(1, 151)]
 
-    vi, ri, Pi = initial_velocity, initial_radius, initial_pressure
+    vi, ri, Pi = DEFAULT_VELOCITY, initial_radius, initial_pressure
 
     for _ in range(1, 151):
-        vf = vi + (
-            ((4 * math.pi * (ri ** 2) * Pi) / initial_surface_mass)
-            - ((GRAVITY_CONSTANT * initial_mass) / ri ** 2)
-        ) * TIME_INTERVAL
+        vf = vi + ((4 * math.pi * ri * ri * Pi / initial_surface_mass) - ((GRAVITY_CONSTANT * initial_mass) / ri ** 2)) * TIME_INTERVAL
         rf = ri + (vf * TIME_INTERVAL)
-        Pf = Pi * ((ri / rf) ** 5)
+        Pf = Pi * ((ri / rf) ** (3 * gamma))
 
         data["velocity"].append(vf)
         data["radius"].append(rf)
@@ -51,133 +44,158 @@ def simulate_properties(initial_mass, initial_surface_mass, initial_radius, init
 
     return time, data
 
-# PyQt5 Application
-class CepheidApp(QMainWindow):
-    def __init__(self):
-        super().__init__()
+def show_help():
+    tk.messagebox.showinfo("Help", "This is a Cepheid Variable Star Simulation. Adjust the sliders to change the star's properties and click 'Update' to see the changes in the graphs.")
 
-        self.initUI()
+def show_about():
+    tk.messagebox.showinfo("About", "Cepheid Star Simulator\nVersion 1.0\n\nCopyright © 2023 Alex Toogood-Johnson")
 
-    def initUI(self):
-        self.setWindowTitle("Cepheid Variable Star Simulation")
-        self.setGeometry(100, 100, 1600, 800)
+class CustomButton(tk.Button):
+    """This class is a custom button that changes colour when the mouse hovers over it"""
 
-        self.central_widget = QWidget(self)
-        self.setCentralWidget(self.central_widget)
+    def __init__(self, master=None, **kwargs):
+        tk.Button.__init__(self, master, **kwargs)
+        self.default_bg = self.cget("background")
+        self.hover_bg = "light blue"
+        self.config(width=30, height=2, relief=tk.GROOVE)
+        self.bind("<Enter>", self.on_hover)
+        self.bind("<Leave>", self.on_leave)
 
-        self.layout = QVBoxLayout(self.central_widget)
+    def on_hover(self, event):
+        self.config(background=self.hover_bg)
 
-        sliders = {
-            "Initial Mass (kg)": DEFAULT_INITIAL_MASS,
-            "Initial Surface Mass (kg)": DEFAULT_INITIAL_SURFACE_MASS,
-            "Initial Radius (m)": DEFAULT_INITIAL_RADIUS,
-            "Initial Velocity (m/s)": DEFAULT_INITIAL_VELOCITY,
-            "Initial Pressure (N/m²)": DEFAULT_INITIAL_PRESSURE,
-        }
+    def on_leave(self, event):
+        self.config(background=self.default_bg)
 
-        self.slider_widgets = {}
+class App(tk.Tk):
+    """This class is the main application window"""
 
-        slider_layout = QVBoxLayout()
+    def __init__(self) -> None:
 
-        for label, default_value in sliders.items():
-            slider, label_widget = self.create_slider(label, 0.5, 1.5, 1.0)
-            slider.setValue(100)
-            self.slider_widgets[label] = slider
-            slider.valueChanged.connect(self.refresh_graphs)
-            slider_layout.addWidget(label_widget)
-            slider_layout.addWidget(slider)
+        tk.Tk.__init__(self)
+        self.title("Cepheid Variable Star Simulater - Made by Alex Toogood-Johnson")
+        self.configure(bg="white")
+        self.resizable(False, False)
 
-        self.reset_button = QPushButton("Reset", self)
-        self.reset_button.clicked.connect(self.reset_values)
-        
-        slider_layout.addWidget(self.reset_button)
-        self.layout.addLayout(slider_layout)
+        self.menu_bar = tk.Menu(self)
+        self.config(menu=self.menu_bar)
+        self.menu_bar.add_command(label="   ")
+        self.menu_bar.add_command(label="Exit", command=self.destroy)
+        self.menu_bar.add_command(label="Help", command=show_help)
+        self.menu_bar.add_command(label="About", command=show_about)
+        self.menu_bar.add_command(label="Stats", command=self.show_stats)
 
-        self.figure, self.ax = plt.subplots(1, 3, figsize=(20, 6))
-        self.canvas = FigureCanvas(self.figure)
-        self.layout.addWidget(self.canvas)
 
-        for ax in self.ax:
-            ax.yaxis.set_major_formatter(plt.ScalarFormatter(useMathText=True))
+        self.slider_frame = tk.Frame(self, bg="white", relief=tk.GROOVE, borderwidth=2, highlightthickness=1)
+        self.slider_frame.pack(side=tk.LEFT, padx=30, pady=30, ipadx=30, ipady=30)
+        self.slider_styles = {'sliderrelief': 'groove', 'sliderlength': 50, 'length': 300, 'bg': "white", 'borderwidth': 0, 'highlightthickness': 0, 'orient': "horizontal"}
 
-        self.figure.subplots_adjust(wspace=0.3)
+        self.mass_slider = tk.Scale(self.slider_frame, label="Mass (kg)", from_=0.5*DEFAULT_MASS, to=1.5*DEFAULT_MASS, resolution=DEFAULT_MASS/100, **self.slider_styles)
+        self.surface_mass_slider = tk.Scale(self.slider_frame, label="Surface Mass (kg)", from_=0.5*DEFAULT_SURFACE_MASS, to=1.5*DEFAULT_SURFACE_MASS, resolution=DEFAULT_SURFACE_MASS/100, **self.slider_styles)
+        self.radius_slider = tk.Scale(self.slider_frame, label="Radius (m)", from_=0.5*DEFAULT_RADIUS, to=1.5*DEFAULT_RADIUS, resolution=DEFAULT_RADIUS/100, **self.slider_styles)
+        self.gamma_slider = tk.Scale(self.slider_frame, label="Gamma (ᵞ) Constant", from_=0.5*DEFAULT_GAMMA, to=1.5*DEFAULT_GAMMA, resolution=DEFAULT_GAMMA/100, **self.slider_styles)
+        self.pressure_slider = tk.Scale(self.slider_frame, label="Pressure (N)", from_=0.5*DEFAULT_PRESSURE, to=1.5*DEFAULT_PRESSURE, resolution=DEFAULT_PRESSURE/100, **self.slider_styles)
 
-        self.time, self.data = simulate_properties(
-            DEFAULT_INITIAL_MASS,
-            DEFAULT_INITIAL_SURFACE_MASS,
-            DEFAULT_INITIAL_RADIUS,
-            DEFAULT_INITIAL_VELOCITY,
-            DEFAULT_INITIAL_PRESSURE,
-        )
+        self.mass_slider.set(DEFAULT_MASS)
+        self.surface_mass_slider.set(DEFAULT_SURFACE_MASS)
+        self.radius_slider.set(DEFAULT_RADIUS)
+        self.gamma_slider.set(DEFAULT_GAMMA)
+        self.pressure_slider.set(DEFAULT_PRESSURE)
 
-        self.update_graphs()
+        self.mass_slider.pack(pady=5)
+        self.surface_mass_slider.pack(pady=5)
+        self.radius_slider.pack(pady=5)
+        self.gamma_slider.pack(pady=5)
+        self.pressure_slider.pack(pady=5)
 
-    def create_slider(self, label_text, min_value, max_value, initial_value):
-        slider = QSlider(Qt.Horizontal)
-        slider.setRange(int(min_value * 100), int(max_value * 100))
-        slider.setValue(int(initial_value * 100))
-        slider.setTickInterval(1)
-        slider.setTickPosition(QSlider.TicksBelow)
+        self.update_button = CustomButton(self.slider_frame, text="Update", command=self.update_graphs)
+        self.reset_button = CustomButton(self.slider_frame, text="Reset", command=self.reset_values)
 
-        def update_label(value):
-            multiplier = value / 100.0
-            label_widget.setText(f"{label_text}: {multiplier:.2f}")
+        self.update_button.pack(padx=10, pady=30, side=tk.BOTTOM)
+        self.reset_button.pack(padx=10, side=tk.BOTTOM)
 
-        slider.valueChanged.connect(update_label)
+        self.graph_frame = tk.Frame(self, bg="white", relief=tk.GROOVE, borderwidth=2)
+        self.graph_frame.pack(side=tk.RIGHT, padx=30, ipady=2)
 
-        label_widget = QLabel(f"{label_text}: {initial_value:.2f}")
 
-        return slider, label_widget
+        self.figure, self.ax = plt.subplots(1, 3, figsize=(15, 5))
 
-    def refresh_graphs(self):
-        # Extract values from sliders
-        initial_mass = self.slider_widgets["Initial Mass (kg)"].value() / 100.0 * DEFAULT_INITIAL_MASS
-        initial_surface_mass = self.slider_widgets["Initial Surface Mass (kg)"].value() / 100.0 * DEFAULT_INITIAL_SURFACE_MASS
-        initial_radius = self.slider_widgets["Initial Radius (m)"].value() / 100.0 * DEFAULT_INITIAL_RADIUS
-        initial_velocity = self.slider_widgets["Initial Velocity (m/s)"].value() / 100.0 * DEFAULT_INITIAL_VELOCITY
-        initial_pressure = self.slider_widgets["Initial Pressure (N/m²)"].value() / 100.0 * DEFAULT_INITIAL_PRESSURE
+        self.canvas = FigureCanvasTkAgg(self.figure, master=self)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(in_=self.graph_frame)
 
-        # Update simulation data
-        self.time, self.data = simulate_properties(initial_mass, initial_surface_mass, initial_radius, initial_velocity, initial_pressure)
 
-        # Update graphs
+        self.line_colors = cycle(['b', 'g', 'r'])
+
         self.update_graphs()
 
     def update_graphs(self):
-        self.figure.clf()
+        """This function is called when the 'Update' button is pressed. It updates the graphs based on the slider values"""
 
-        colors = ['blue', 'green', 'red']
+        initial_mass = self.mass_slider.get()
+        initial_surface_mass = self.surface_mass_slider.get()
+        initial_radius = self.radius_slider.get()
+        initial_gamma = self.gamma_slider.get()
+        initial_pressure = self.pressure_slider.get()
+
+        time, data = simulate_properties(initial_mass, initial_surface_mass, initial_radius, initial_pressure, initial_gamma)
 
         for i, var_name in enumerate(["radius", "velocity", "pressure"]):
-            ax = self.figure.add_subplot(1, 3, i + 1)
-            ax.plot(self.time, self.data[var_name], color=colors[i])
-            ax.set_xlabel("Time (s)")
-            ax.set_title(var_name.capitalize())
+            self.ax[i].clear()
+            self.ax[i].plot(time, data[var_name], label=var_name.capitalize(), color=next(self.line_colors))
+            self.ax[i].set_xlabel("Time (s)")
+            self.ax[i].set_title(var_name.capitalize())
+            self.ax[i].legend()
 
         self.canvas.draw()
 
     def reset_values(self):
-        # Reset sliders to default values
-        for label, slider in self.slider_widgets.items():
-            slider.setValue(100)
+        """This function is called when the 'Reset' button is pressed. It resets the sliders to their default values and updates the graphs"""
 
-        # Reset simulation data to default values
-        self.time, self.data = simulate_properties(
-            DEFAULT_INITIAL_MASS,
-            DEFAULT_INITIAL_SURFACE_MASS,
-            DEFAULT_INITIAL_RADIUS,
-            DEFAULT_INITIAL_VELOCITY,
-            DEFAULT_INITIAL_PRESSURE,
-        )
-
-        # Update graphs
+        self.mass_slider.set(DEFAULT_MASS)
+        self.surface_mass_slider.set(DEFAULT_SURFACE_MASS)
+        self.radius_slider.set(DEFAULT_RADIUS)
+        self.gamma_slider.set(DEFAULT_GAMMA)
+        self.pressure_slider.set(DEFAULT_PRESSURE)
         self.update_graphs()
 
-def main():
-    app = QApplication(sys.argv)
-    ex = CepheidApp()
-    ex.show()
-    sys.exit(app.exec_())
+    def show_stats(self):
+        initial_mass = self.mass_slider.get()
+        initial_surface_mass = self.surface_mass_slider.get()
+        initial_radius = self.radius_slider.get()
+        initial_gamma = self.gamma_slider.get()
+        initial_pressure = self.pressure_slider.get()
+        
+        time, data = simulate_properties(initial_mass, initial_surface_mass, initial_radius, initial_pressure, initial_gamma)
+
+        period = self.find_period(time, data["radius"])
+        average_radius = np.mean(data["radius"])
+        average_pressure = np.mean(data["pressure"])
+
+        stats_message = f"Period: {period:.2f} s\nAverage Radius: {average_radius:.2f} m\nAverage Pressure: {average_pressure:.2f} N/m²"
+        tk.messagebox.showinfo("Statistics", stats_message)
+
+    def find_period(self, time_data, radius_data) -> float | str:
+        """Finds out the period of the star"""
+
+        threshold = self.radius_slider.get()
+
+        crossings = []
+        prev_radius = radius_data[0]
+
+        for t, radius in zip(time_data, radius_data):
+            if radius > threshold and prev_radius <= threshold:
+                crossings.append(t)
+            prev_radius = radius
+
+        if len(crossings) < 2:
+            return "Unable to calculate period"
+
+        time_intervals = [crossings[i] - crossings[i - 1] for i in range(1, len(crossings))]
+        period = np.mean(time_intervals)
+
+        return period
 
 if __name__ == "__main__":
-    main()
+    app = App()
+    app.mainloop()
