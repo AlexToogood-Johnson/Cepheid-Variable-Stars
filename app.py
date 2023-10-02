@@ -175,7 +175,7 @@ class App(tk.Tk):
         stats_message = f"Period: {period:.2f} s\nAverage Radius: {average_radius:.2f} m\nAverage Pressure: {average_pressure:.2f} N/m²"
         tk.messagebox.showinfo("Statistics", stats_message)
 
-    def find_period(self, time_data, radius_data) -> float | str:
+    def find_period(self, time_data, radius_data):
         """Finds out the period of the star"""
 
         threshold = self.radius_slider.get()
