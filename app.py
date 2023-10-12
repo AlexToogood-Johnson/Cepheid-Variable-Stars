@@ -9,6 +9,7 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from itertools import cycle
 import numpy as np
+import locale
 
 ########## Constants ##########
 
@@ -22,6 +23,12 @@ TIME_INTERVAL = 1e4
 GRAVITY_CONSTANT = 6.67430e-11
 
 ########## Functions ##########
+
+def add_char(number):
+    """Inserts a comma every 3 digits in a number"""
+
+    locale.setlocale(locale.LC_ALL, '')
+    return locale.format_string("%d", number, grouping=True)
 
 def simulate_properties(initial_mass, initial_surface_mass, initial_radius, initial_pressure, gamma):
     """Calculates the properties of the star based on how the initial starting values change"""
@@ -45,7 +52,7 @@ def simulate_properties(initial_mass, initial_surface_mass, initial_radius, init
     return time, data
 
 def show_help():
-    tk.messagebox.showinfo("Help", "This is a Cepheid Variable Star Simulation. Adjust the sliders to change the star's properties and click 'Update' to see the changes in the graphs.")
+    tk.messagebox.showinfo("Help", "This is a Cepheid Variable Star Simulation. Adjust the sliders to change the star's properties and click 'Update' to see the changes in the graphs. The graph may break if the values entered are not realistic. Click 'Reset' to reset the sliders to their default values. Click 'Stats' to see the period, average radius and average pressure of the star.")
 
 def show_about():
     tk.messagebox.showinfo("About", "Cepheid Star Simulator\nVersion 1.0\n\nCopyright © 2023 Alex Toogood-Johnson")
@@ -168,11 +175,11 @@ class App(tk.Tk):
         
         time, data = simulate_properties(initial_mass, initial_surface_mass, initial_radius, initial_pressure, initial_gamma)
 
-        period = self.find_period(time, data["radius"])
-        average_radius = np.mean(data["radius"])
-        average_pressure = np.mean(data["pressure"])
+        period = add_char(self.find_period(time, data["radius"]))
+        average_radius = add_char(np.mean(data["radius"]))
+        average_pressure = add_char(np.mean(data["pressure"]))
 
-        stats_message = f"Period: {period:.2f} s\nAverage Radius: {average_radius:.2f} m\nAverage Pressure: {average_pressure:.2f} N/m²"
+        stats_message = f"Period: {period} s\nAverage Radius: {average_radius} m\nAverage Pressure: {average_pressure} N/m²"
         tk.messagebox.showinfo("Statistics", stats_message)
 
     def find_period(self, time_data, radius_data):
